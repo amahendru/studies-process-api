@@ -1,0 +1,7 @@
+%dw 2.0
+
+type auto_e0ae674d_d8ec_420b_b349_b2584789a305_Input_Payload = {|
+  studyId: Any, 
+  studyAttributes: Any
+|}
+

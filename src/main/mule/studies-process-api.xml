@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:anypoint-mq="http://www.mulesoft.org/schema/mule/anypoint-mq" xmlns:batch="http://www.mulesoft.org/schema/mule/batch"
+	xmlns:json-logger="http://www.mulesoft.org/schema/mule/json-logger"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/json-logger http://www.mulesoft.org/schema/mule/json-logger/current/mule-json-logger.xsd
+http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/batch/current/mule-batch.xsd
+http://www.mulesoft.org/schema/mule/anypoint-mq http://www.mulesoft.org/schema/mule/anypoint-mq/current/mule-anypoint-mq.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="f0287e33-d9d2-4d25-ad69-cf3f25d061f4" >
+		<http:listener-connection host="0.0.0.0" port="8081" />
+	</http:listener-config>
+	<http:request-config name="HTTP_Request_configuration" doc:name="HTTP Request configuration" doc:id="2c0564c9-8c1b-44c7-9bbb-8edcdd4e0c1b" basePath="/api/source" >
+		<http:request-connection host="dev-source-system-api.de-c1.cloudhub.io" port="80" />
+	</http:request-config>
+	<json-logger:config name="JSON_Logger_Config" doc:name="JSON Logger Config" doc:id="c0d49110-2455-414b-95cd-c7047ec5e4a7" applicationName="studies-process-api" applicationVersion="1.0.0" environment="dev" />
+	<anypoint-mq:config name="Anypoint_MQ_Config" doc:name="Anypoint MQ Config" doc:id="8b536f1a-db4a-4e80-be20-c34f2ce74c85" >
+		<anypoint-mq:connection clientId="f77a9b4a87064b0f9451afd9c672b059" clientSecret="DcF3a2468abE4667970DCcD16f24AA04" />
+	</anypoint-mq:config>
+	<flow name="studies-process-apiFlow" doc:id="5b3d3337-9e55-458c-b441-0bc38b6865e9" >
+		<http:listener doc:name="Listener" doc:id="aff55ffd-7b05-4f65-812a-bb5caef56037" config-ref="HTTP_Listener_config" path="/api/studies/process"/>
+		<async doc:name="Async" doc:id="d3952267-4ded-4dad-90bd-064f3de5aafe" >
+			<flow-ref doc:name="extract-transform-load" doc:id="82ce3a37-5521-4966-afd9-6d8c226db695" name="extract-transform-load"/>
+		</async>
+		<ee:transform doc:name="Transform Message" doc:id="0b9a1a9e-beb7-4b6b-bc14-26770e0e79c0" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	message: "Process started successfully"
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="studies-process-scheduler" doc:id="cfc42963-22b2-496a-b481-7023acba2601" >
+		<scheduler doc:name="Scheduler" doc:id="3429f595-10a6-456a-a41c-6f850928c470" >
+			<scheduling-strategy >
+				<fixed-frequency frequency="1" timeUnit="HOURS"/>
+			</scheduling-strategy>
+		</scheduler>
+		<json-logger:logger doc:name="Logger" doc:id="d28ee3fe-3446-4481-8f96-988cb47563cf" config-ref="JSON_Logger_Config" message="Starting scheduled job"/>
+		<ee:transform doc:name="Transform Message" doc:id="11a7a6f2-902b-4420-9af4-6fc15f740692" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	studyIds: [
+		"1",
+		"2",
+		"3",
+		"4",
+		"5",
+		"6",
+		"7",
+		"8",
+		"9",
+		"10"
+	]
+}]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<flow-ref doc:name="extract-transform-load" doc:id="8fd67b0b-1e5b-46e8-bc7c-c5dba7e9bfeb" name="extract-transform-load" />
+	</flow>
+	<flow name="extract-transform-load" doc:id="31d29255-d8b5-4e05-b7a2-6562c094df7c" >
+		<parallel-foreach doc:name="Parallel For Each" doc:id="6d9b19c4-108c-42ff-8a02-4c9e75cdc8d3" collection="#[payload.studyIds]">
+			<json-logger:logger doc:name="Logger" doc:id="8949bfcc-f9ef-4367-ba0d-24a3a20b0b95" config-ref="JSON_Logger_Config" message='#["Starting ETL for " ++ payload]' />
+			<ee:transform doc:name="Transform Message" doc:id="16defaf3-7409-4bfb-9b45-bf64f71a0c1b">
+				<ee:message>
+					<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"studyId": payload
+}]]></ee:set-payload>
+				</ee:message>
+				<ee:variables>
+					<ee:set-variable variableName="currentStudyId"><![CDATA[payload]]></ee:set-variable>
+				</ee:variables>
+			</ee:transform>
+			<flow-ref doc:name="get-study-data" doc:id="a4098717-2eee-4d42-965b-317071eb3251" name="get-study-data" target="currentStudyData"/>
+			<json-logger:logger doc:name="Logger" doc:id="cb56de4e-79b6-44e4-9fbd-4dafa3b38a57" config-ref="JSON_Logger_Config" message='#["Got study data for " ++ vars.currentStudyId as String]' tracePoint="AFTER_REQUEST" >
+				<json-logger:content ><![CDATA[#[import modules::JSONLoggerModule output application/json ---
+{
+    payload: JSONLoggerModule::stringifyNonJSON(vars.currentStudyData) 
+}]]]></json-logger:content>
+			</json-logger:logger>
+			<ee:transform doc:name="Transform Message" doc:id="9fdbaa5e-7e95-45c9-92a3-0d126f6a23f9" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[%dw 2.0
+output application/java
+---
+vars.currentStudyData.studyAttributes as Iterator]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<batch:job jobName="studies-process-apiBatch_Job" doc:id="50858ed5-911f-435d-af89-ff7356df4dba" blockSize="5">
+				<batch:process-records >
+					<batch:step name="Batch_Step" doc:id="bac0af11-9b22-4636-a949-0a639f31c6af" >
+						<ee:transform doc:name="Transform Message" doc:id="e1578d49-35de-4e08-99d5-e0795791f61f" >
+							<ee:message >
+								<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+	"studyId": vars.currentStudyData.studyId,
+	"studyAttributes": payload
+}]]></ee:set-payload>
+							</ee:message>
+						</ee:transform>
+						<flow-ref doc:name="write-data-to-queue" doc:id="5a9c7bcf-61ee-41c9-9825-9b082780fffc" name="write-data-to-queue"/>
+					</batch:step>
+				</batch:process-records>
+				<batch:on-complete >
+					<json-logger:logger doc:name="Logger" doc:id="ef19b422-c3e1-4507-ab4d-6e617d77b855" config-ref="JSON_Logger_Config" message="Batch Process Completed"/>
+				</batch:on-complete>
+			</batch:job>
+			<ee:transform doc:name="Transform Message" doc:id="7d714deb-d452-4113-bc19-41cd9d4540f6" >
+				<ee:message >
+					<ee:set-payload ><![CDATA[""
+]]></ee:set-payload>
+				</ee:message>
+			</ee:transform>
+			<json-logger:logger doc:name="Logger" doc:id="5109e4da-42dd-4d3f-8d20-91c47a53fb99" config-ref="JSON_Logger_Config" tracePoint="END" message='#["Finished ETL for " ++ vars.currentStudyId as String]'/>
+		</parallel-foreach>
+	</flow>
+	<flow name="get-study-data" doc:id="abbe48e5-4014-4b47-8d9a-852f51532057" >
+		<http:request method="GET" doc:name="Request" doc:id="ed488d28-ba00-4a7b-981e-a0c84a30c487" config-ref="HTTP_Request_configuration" path="/data">
+			<http:query-params ><![CDATA[#[output application/java
+---
+{
+	"studyId" : payload.studyId
+}]]]></http:query-params>
+		</http:request>
+	</flow>
+	<flow name="write-data-to-queue" doc:id="e0ae674d-d8ec-420b-b349-b2584789a305" >
+		<anypoint-mq:publish doc:name="Publish" doc:id="99b8ff62-c38d-4432-baa7-8ae4ec0db3a8" config-ref="Anypoint_MQ_Config" destination="study-data-queue"/>
+		<json-logger:logger doc:name="Logger" doc:id="30217ebb-e78e-4c4b-879b-f4169cff9630" config-ref="JSON_Logger_Config" message="Successfully wrote message to queue" tracePoint="FLOW"/>
+	</flow>
+</mule>
