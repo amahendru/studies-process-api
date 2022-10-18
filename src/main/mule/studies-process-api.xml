@@ -16,7 +16,7 @@ http://www.mulesoft.org/schema/mule/anypoint-mq http://www.mulesoft.org/schema/m
 	</http:request-config>
 	<json-logger:config name="JSON_Logger_Config" doc:name="JSON Logger Config" doc:id="c0d49110-2455-414b-95cd-c7047ec5e4a7" applicationName="studies-process-api" applicationVersion="1.0.0" environment="dev" />
 	<anypoint-mq:config name="Anypoint_MQ_Config" doc:name="Anypoint MQ Config" doc:id="8b536f1a-db4a-4e80-be20-c34f2ce74c85" >
-		<anypoint-mq:connection clientId="f77a9b4a87064b0f9451afd9c672b059" clientSecret="DcF3a2468abE4667970DCcD16f24AA04" />
+		<anypoint-mq:connection clientId="xxxx" clientSecret="xxxx" />
 	</anypoint-mq:config>
 	<flow name="studies-process-apiFlow" doc:id="5b3d3337-9e55-458c-b441-0bc38b6865e9" >
 		<http:listener doc:name="Listener" doc:id="aff55ffd-7b05-4f65-812a-bb5caef56037" config-ref="HTTP_Listener_config" path="/api/studies/process"/>
